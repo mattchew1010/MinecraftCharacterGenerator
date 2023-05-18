@@ -29,7 +29,6 @@ def fail(msg, verbose_msg):
     print(msg, file=sys.stderr)
     if DEBUG:
         print(verbose_msg, file=sys.stderr)
-    sys.exit(1)
 
 def find_texture_info(properties):
     for prop in properties:
@@ -65,7 +64,7 @@ def main(id):
 
     r = get_url(userinfo_url.format(id=id))
     if r.status_code != 200:
-        fail("Failed to download user info for {id}".format(id=id),
+        return fail("Failed to download user info for {id}".format(id=id),
              "{0} {1}".format(r.status_code, userinfo_url.format(id=id)))
     if DEBUG:
         print("{0} {1}".format(r.status_code, userinfo_url.format(id=id)), file=sys.stderr)
@@ -82,7 +81,7 @@ def main(id):
              texture_info)
     r = get_url(skin_url, stream=True)
     if r.status_code != 200:
-        fail("Could not download skin for {id}".format(id=id),
+        return fail("Could not download skin for {id}".format(id=id),
              "{0} {1}".format(r.status_code, skin_url))
     if DEBUG:
         print("{0} {1}".format(r.status_code, skin_url), file=sys.stderr)
