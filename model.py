@@ -117,6 +117,11 @@ class Model(keras.Model):
                                  )
       checkpoint.restore(tf.train.latest_checkpoint('./Data/Checkpoints'))
       for epoch in range(epochs):
+         if epoch % 20 == 0:
+            print("Training Discriminator")
+            self.discriminator.model.trainable = True
+         else:
+            self.discriminator.model.trainable = False
          os.mkdir("./Data/GeneratedImages/epoch_{:04d}".format(epoch))
          batch_num = 1
          for batch in dataset:
