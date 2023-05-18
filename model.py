@@ -52,16 +52,16 @@ class Discriminator():
    
    def __init__(self):
       self.model = keras.Sequential([
+         layers.Conv2D(128, 3, strides=(2,2), padding='same', activation='relu'),
+         layers.Dropout(0.2),
+
          layers.Conv2D(64, 3, strides=(2,2), padding='same', activation='relu'),
          layers.Dropout(0.2),
 
          layers.Conv2D(32, 3, strides=(2,2), padding='same', activation='relu'),
          layers.Dropout(0.2),
 
-         layers.Conv2D(16, 3, strides=(2,2), padding='same', activation='relu'),
-         layers.Dropout(0.2),
-
-         layers.Dense(128, activation='sigmoid'),
+         layers.Dense(1024, activation='sigmoid'),
          layers.Dense(1),
       ])
 
