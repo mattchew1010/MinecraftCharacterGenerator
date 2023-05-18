@@ -5,6 +5,8 @@ import shutil
 import matplotlib.pyplot as plt
 import os
 
+rescale_images = tf.keras.layers.Rescaling(scale=1./255)
+
 class Generator():
    def __call__(self, *args, **kwargs):
       return self.model(*args, **kwargs)
@@ -88,7 +90,7 @@ class Model(keras.Model):
       with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
          gen_images = self.generator(noise, training=True)
 
-         real_pred = self.discriminator(real_images, training=True)
+         real_pred = self.discriminator(rescale_images(real_images), training=True)
          gen_pred = self.discriminator(gen_images, training=True)
 
          gen_loss = self.generator.loss(gen_pred)
