@@ -4,8 +4,10 @@ from keras import layers
 import shutil
 import matplotlib.pyplot as plt
 import os
+import numpy as np
+from datetime import datetime
 
-rescale_images = tf.keras.layers.Rescaling(scale=1./255)
+rescale_images = tf.keras.layers.Rescaling(scale=1./127.5, offset=-1)
 
 class Generator():
    def __call__(self, *args, **kwargs):
@@ -15,26 +17,22 @@ class Generator():
       self.noise_dim = noise_dim
       self.model = keras.Sequential([
          #input layers
-         layers.Dense(2048, input_shape=(noise_dim,), activation='relu'),
-         layers.Dense(2048, activation='relu'),
-         layers.BatchNormalization(),
 
          #final input layer with resizing
-         layers.Dense(4*4*1024, activation='relu'),
-         layers.BatchNormalization(),
-         layers.Reshape((4,4,1024)),
+         layers.Dense(4*4*256, activation='relu'),
+         layers.Reshape((4,4,256)),
 
          #convolutional layers
-         layers.Conv2DTranspose(1024, 3, strides=(2,2), padding='same', activation='relu'),
+         layers.Conv2DTranspose(256, 3, strides=(2,2), padding='same', activation='relu'),
          layers.BatchNormalization(),
-
-         layers.Conv2DTranspose(512, 3, strides=(2,2), padding='same', activation='relu'),
-         layers.BatchNormalization(),
-
+         
          layers.Conv2DTranspose(128, 3, strides=(2,2), padding='same', activation='relu'),
          layers.BatchNormalization(),
 
          layers.Conv2DTranspose(64, 3, strides=(2,2), padding='same', activation='relu'),
+         layers.BatchNormalization(),
+
+         layers.Conv2DTranspose(32, 3, strides=(2,2), padding='same', activation='relu'),
          layers.BatchNormalization(),
 
          layers.Conv2DTranspose(3, 3, strides=(1,1), padding='same', activation='tanh'),
@@ -52,15 +50,20 @@ class Discriminator():
    
    def __init__(self):
       self.model = keras.Sequential([
+         layers.Conv2D(512, 3, strides=(2,2), padding='same', activation='relu'),
+         layers.Dropout(0.2),
+
+         layers.Conv2D(256, 3, strides=(2,2), padding='same', activation='relu'),
+         layers.Dropout(0.2),
+
          layers.Conv2D(128, 3, strides=(2,2), padding='same', activation='relu'),
          layers.Dropout(0.2),
 
          layers.Conv2D(64, 3, strides=(2,2), padding='same', activation='relu'),
          layers.Dropout(0.2),
 
-         layers.Conv2D(32, 3, strides=(2,2), padding='same', activation='relu'),
-         layers.Dropout(0.2),
-
+         layers.Flatten(),
+         layers.Dense(4096, activation='sigmoid'),
          layers.Dense(1024, activation='sigmoid'),
          layers.Dense(1),
       ])
@@ -116,25 +119,53 @@ class Model(keras.Model):
                                  discriminator=self.discriminator.model
                                  )
       checkpoint.restore(tf.train.latest_checkpoint('./Data/Checkpoints'))
+      # self.discriminator.model.trainable = True
+      # print("Training Discriminator")
+      # batch_num = 1
+      # for batch in dataset:
+      #    gen_loss, disc_loss = self.train_step(batch)
+      #    print(f"Epoch {0} | Batch: {batch_num}/{batch_count} | Generator Loss: {round(gen_loss.numpy().item(), 4)} | Discriminator Loss: {round(disc_loss.numpy().item(), 4)}", end='\r')
+      #    batch_num += 1
+
+      # self.discriminator.model.trainable = False
       for epoch in range(epochs):
-         if epoch % 20 == 0:
+         logdir = "logs/v1/epoch_" + str(epoch) + "/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+         file_writer = tf.summary.create_file_writer(logdir)
+
+
+         avg_conf= np.average(self.discriminator(self.generator(tf.random.normal([100, self.noise_dim]), training=False), training=False).numpy())
+         avg_conf = np.exp(avg_conf)
+         avg_conf = avg_conf / (1+avg_conf)
+         print("\nAverage Confidence: ", avg_conf)
+         if avg_conf < 0.6:
+            self.discriminator.model.trainable = False
+         else: 
             print("Training Discriminator")
             self.discriminator.model.trainable = True
-         else:
-            self.discriminator.model.trainable = False
+
+
          os.mkdir("./Data/GeneratedImages/epoch_{:04d}".format(epoch))
          batch_num = 1
          for batch in dataset:
             gen_loss, disc_loss = self.train_step(batch)
+            # with file_writer.as_default():
+            #    tf.summary.scalar('gen_loss', gen_loss.numpy().item(), step=batch_num)
+            #    tf.summary.scalar('disc_loss', disc_loss.numpy().item(), step=batch_num)
             print(f"Epoch {epoch+1} | Batch: {batch_num}/{batch_count} | Generator Loss: {round(gen_loss.numpy().item(), 4)} | Discriminator Loss: {round(disc_loss.numpy().item(), 4)}", end='\r')
             batch_num += 1
          checkpoint.save('./Data/Checkpoints/ckpt')
          pred = self.generator(tf.random.normal([batch_size, self.noise_dim]), training=False)
+         conf = self.discriminator(pred).numpy()
+         conf = np.exp(conf)
+         conf = conf / (1+conf)
+         pred = ((pred + 1) * 127.5).numpy().astype(int)
          for i in range(pred.shape[0]):
+            # with file_writer.as_default():
+            #    tf.summary.image("Generated Image - " + str(round(conf[i].item(), 4)), pred[i], step=0)
             plt.clf()
             plt.imshow(pred[i])
             plt.axis('off')
-            plt.savefig('./Data/GeneratedImages/epoch_{:04d}/{i}.png'.format(epoch, i=i), bbox_inches='tight')
+            plt.savefig('./Data/GeneratedImages/epoch_{:04d}/{i}_{conf}.png'.format(epoch, i=i, conf=conf[i].item()), bbox_inches='tight')
 
 
 if __name__ == "__main__":
