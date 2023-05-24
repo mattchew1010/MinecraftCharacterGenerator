@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 from datetime import datetime
+from MinibatchDiscrimination import MinibatchDiscrimination
+
 
 rescale_images = tf.keras.layers.Rescaling(scale=1./127.5, offset=-1)
 
@@ -65,6 +67,7 @@ class Discriminator():
          layers.Flatten(),
          layers.Dense(4096, activation='sigmoid'),
          layers.Dense(1024, activation='sigmoid'),
+         MinibatchDiscrimination(128, 128),
          layers.Dense(1),
       ])
 
