@@ -119,19 +119,8 @@ class Model(keras.Model):
                                  discriminator=self.discriminator.model
                                  )
       checkpoint.restore(tf.train.latest_checkpoint('./Data/Checkpoints'))
-      # self.discriminator.model.trainable = True
-      # print("Training Discriminator")
-      # batch_num = 1
-      # for batch in dataset:
-      #    gen_loss, disc_loss = self.train_step(batch)
-      #    print(f"Epoch {0} | Batch: {batch_num}/{batch_count} | Generator Loss: {round(gen_loss.numpy().item(), 4)} | Discriminator Loss: {round(disc_loss.numpy().item(), 4)}", end='\r')
-      #    batch_num += 1
 
-      # self.discriminator.model.trainable = False
       for epoch in range(epochs):
-         logdir = "logs/v1/epoch_" + str(epoch) + "/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-         file_writer = tf.summary.create_file_writer(logdir)
-
 
          avg_conf= np.average(self.discriminator(self.generator(tf.random.normal([100, self.noise_dim]), training=False), training=False).numpy())
          avg_conf = np.exp(avg_conf)
@@ -148,9 +137,7 @@ class Model(keras.Model):
          batch_num = 1
          for batch in dataset:
             gen_loss, disc_loss = self.train_step(batch)
-            # with file_writer.as_default():
-            #    tf.summary.scalar('gen_loss', gen_loss.numpy().item(), step=batch_num)
-            #    tf.summary.scalar('disc_loss', disc_loss.numpy().item(), step=batch_num)
+
             print(f"Epoch {epoch+1} | Batch: {batch_num}/{batch_count} | Generator Loss: {round(gen_loss.numpy().item(), 4)} | Discriminator Loss: {round(disc_loss.numpy().item(), 4)}", end='\r')
             batch_num += 1
          checkpoint.save('./Data/Checkpoints/ckpt')
@@ -160,8 +147,6 @@ class Model(keras.Model):
          conf = conf / (1+conf)
          pred = ((pred + 1) * 127.5).numpy().astype(int)
          for i in range(pred.shape[0]):
-            # with file_writer.as_default():
-            #    tf.summary.image("Generated Image - " + str(round(conf[i].item(), 4)), pred[i], step=0)
             plt.clf()
             plt.imshow(pred[i])
             plt.axis('off')
